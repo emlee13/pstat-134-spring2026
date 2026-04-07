@@ -1,0 +1,7 @@
+"0","quit
+# What observations have such high price per night?
+listings %>% filter(price > 1000)
+"
+"2","Error in listings %>% filter(price > 1000) : 
+  could not find function ""%>%""
+"
