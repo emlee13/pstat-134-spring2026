@@ -46,8 +46,9 @@ Note that, using `reticulate`, **both Python and R packages are installed using 
 You should not need to manually install these packages if you are working in JupyterHub.
 
 ```{r}
-# py_install(c("pandas", "numpy", "scikit-learn",
-#              "matplotlib", "seaborn", "jupyter"))
+library(reticulate)
+py_install(c("pandas", "numpy", "scikit-learn",
+              "matplotlib", "seaborn", "jupyter"))
 ```
 
 To use a Python package, similar to `library()` in R, we write `import`. For example, to load the `numpy` and `scikit-learn` packages:
@@ -88,8 +89,16 @@ head(starwars)
 ### Exercises
 
 1.  How many rows are in `starwars`? How many columns?
+```{r}
+nrow(starwars)
+ncol(starwars)
+```
 
 2.  What does the `vehicles` variable in the `starwars` data set describe? How do you know?
+
+```{r}
+?starwars
+```
 
 There are a number of variables in the data set, as shown; we have information about things from character name to character homeworld and the number of films each character was in. We'll keep things relatively simple for this example and retain a smaller data set with a subset of variables, `name`, `height` (height in centimeters), `species` (name of species), and `gender` (the gender role or gender identity of the character). Since some characters are missing a height value, we use `drop_na()` to retain the complete observations.
 
@@ -111,6 +120,8 @@ starwars_smaller
 ### Exercises
 
 1.  What do you think the purpose of that second line of that code chunk, with `starwars_smaller['height']`, is?
+
+filters the data so that only observations with height greater than or equal to zero are kept
 
 We can look at some summary statistics of Star Wars character heights in R:
 
@@ -181,4 +192,11 @@ starwars_smaller %>%
 
 2. Can you identify the character(s) in the data set that have a missing value for gender identity? Which characters are they?
 
+```{r}
+starwars %>% 
+  filter(is.na(gender)) %>% 
+  select(name, gender)
+```
+
 3. Can you determine why the code in R included the density curve and histogram for those characters while the code in Python did not?
+
