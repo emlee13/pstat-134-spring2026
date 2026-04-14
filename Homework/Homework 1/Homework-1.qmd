@@ -1,6 +1,6 @@
 ---
 title: "Homework 1"
-author: "PSTAT 134"
+author: "Ethan Lee"
 format:
   html:
     toc: true
@@ -19,7 +19,7 @@ execute:
 
 For this assignment, you may use R or Python, or a combination of both, to complete both case studies. You can use the code that we include in Labs 1 and 2 to answer these questions. You also may need to use other functions. I encourage you to make use of our textbook(s) and use the Internet to help you solve these problems. You can also work together with your classmates. If you do work together, you should provide the names of those classmates below.
 
-[Names of Collaborators (if any):]{.underline}
+[Names of Collaborators (if any):]N/A
 
 ### Case Study: New York Times Ad Impressions (Simulated)
 
@@ -37,17 +37,156 @@ There are 10 data sets in the `/data` subdirectory named `nyt1.csv`, `nyt2.csv`,
 
 Load **a single data file**. Then do the following.
 
+```{r}
+nyt_data <- read.csv("data/nyt1.csv")
+```
+
+
 1.  Create a new variable, `age_group`, that categorizes users into the following age groups: \< 18, 18-24, 25-34, 35-44, 45-54, 55-64, and 65+.
+
+```{r}
+nyt_data$age_group <- cut(nyt_data$Age, breaks = c(0, 17, 24, 34, 44, 54, 64, Inf), 
+                 labels = c("<18", "18-24", "25-34", "35-44", "45-54", "55-64", "65+"),
+                 include.lowest = TRUE)
+```
+
 2.  Plot the distributions of impressions and "click-through rate" for all 6 age categories. (*Note:* Click-through rate is defined as the number of clicks divided by the number of impressions; it represents the proportion of ads that generated clicks.)
+
+```{r}
+library(ggplot2)
+ggplot(nyt_data, aes(x = age_group)) +
+  geom_boxplot(aes(y = Impressions), fill = "lightblue") +
+  labs(title = "Distribution of Impressions by Age Group", x = "Age Group", y = "Impressions") +
+  theme_minimal()
+
+# since click through rate divides clicks by impressions, we need to remove observations that have Impressions = 0 to avoid division by zero
+ctr_data <- subset(nyt_data, Impressions > 0)
+ctr_age_group <- cut(ctr_data$Age, breaks = c(0, 17, 24, 34, 44, 54, 64, Inf), 
+                 labels = c("<18", "18-24", "25-34", "35-44", "45-54", "55-64", "65+"),
+                 include.lowest = TRUE)
+ctr_data$click_through_rate <- ctr_data$Clicks / ctr_data$Impressions
+
+ggplot(ctr_data, aes(x = ctr_age_group)) +
+  geom_boxplot(aes(y = click_through_rate), fill = "lightgreen") +
+  labs(title = "Distribution of Click-Through Rate by Age Group", x = "Age Group", y = "Click-Through Rate") + 
+  theme_minimal()
+```
+
 3.  Create a new variable to categorize users based on their click behavior. (The name and categories for this variable are up to you. Explain what decision\[s\] you make and why.)
+
+```{r}
+ctr_data$click_behavior <- cut(ctr_data$click_through_rate, breaks = c(-Inf, 0, 0.1, 0.5, Inf), 
+                                labels = c("No Clicks", "Low Click-Through", "Moderate Click-Through", "High Click-Through"))
+# I chose to this categorization because it allows us to differentiate between users who are not engaging with ads at all, those who engage minimally, those who engage moderately, and those who engage heavily. It provides a more descriptive understanding of user behavior than categorizing users as clickers or non-clickers.
+```
+
 4.  Explore the data and make visual and quantitative comparisons across user segments/demographics to answer the following:
     -   How do \<18 year old males differ from \<18 year old females in terms of clicks and impressions?
 
     -   How does the distribution of click-through rate for users who are signed in differ from the distribution for those who are **not** signed in?
 
     -   Are certain age groups more likely to be signed in than others? Which ones?
+    
+```{r}
+# under 18 males vs females
+library(dplyr)
+under_18 <- subset(nyt_data, age_group == "<18")
+under_18$Gender <- factor(under_18$Gender, 
+                                 levels = c(0, 1), 
+                                 labels = c("Female", "Male"))
+
+ggplot(under_18, aes(x = Gender, y = Impressions, fill = Gender)) +
+  geom_boxplot() +
+  labs(title = "Impressions by Gender (<18 years old)", x = "Gender", y = "Impressions") +
+  theme_minimal()
+
+ggplot(under_18, aes(x = Gender, y = Clicks, fill = Gender)) +
+  geom_boxplot() +
+  labs(title = "Clicks by Gender (<18 years old)", x = "Gender", y = "Clicks") +
+  theme_minimal()
+
+under_18 %>%
+  group_by(Gender) %>%
+  summarize(
+    mean_impressions = mean(Impressions),
+    mean_clicks = mean(Clicks)
+  )
+# I used AI for the quantitative comparison, it suggested that I could use the summarize funciton in combination wiht group_by to easily compare males and females under 18 in terms of their average impressions and clicks.
+
+# Males and females under 18 years old are quite similar in their impressions and clicks. The quantitative comparison shows this very well, as the average number of clicks and impressions is almost identical between males and females.
+```
+
+```{r}
+# signed in vs not signed in
+ctr_data$Signed_In <- factor(ctr_data$Signed_In, 
+                                 levels = c(0, 1), 
+                                 labels = c("Not Signed In", "Signed In"))
+
+ggplot(ctr_data, aes(x = Signed_In, y = click_through_rate, fill = Signed_In)) +
+  geom_boxplot() +
+  labs(title = "Click-Through Rate by Sign-In Status", x = "Sign-In Status", y = "Click-Through Rate") +
+  theme_minimal()
+
+ctr_data %>%
+  group_by(Signed_In) %>%
+  summarize(
+    mean_ctr = mean(click_through_rate))
+
+# While the boxplots show near-identical distributions, the quantitative comparison reveals that users who are signed in have a slightly higher average click-through rate than those who are not signed in.
+```
+
+```{r}
+# likely age groups to be signed in
+
+nyt_data$Signed_In <- factor(nyt_data$Signed_In, 
+                                 levels = c(0, 1), 
+                                 labels = c("Not Signed In", "Signed In"))
+ggplot(nyt_data, aes(x = age_group, fill = Signed_In)) +
+  geom_bar(position = "fill") + 
+  labs(title = "Proportion of Signed-In Users by Age Group", 
+       x = "Age Group", 
+       y = "Proportion", 
+       fill = "Sign-In Status") +
+  theme_minimal()
+
+nyt_data %>%
+  group_by(age_group) %>%
+  summarize(
+    total_users = n(),
+    signed_in_count = sum(Signed_In == "Signed In", na.rm = TRUE),
+    percent_signed_in = (signed_in_count / total_users) * 100
+  )
+
+sum(nyt_data$Signed_In == "Not Signed In")
+sum(subset(nyt_data, Age == 0)$Signed_In == "Not Signed In")
+
+# The bar plots show us that all of the users over 18 years old are signed in. Upon further investigation, we see that all of the users who are not signed in are also age 0, which is likely a placeholder for missing data. It's likely that the users who are not signed in are actually users with missing data, and that all of the users with valid age data are signed in.
+```
+
+
 5.  Calculate summary statistics for the click-through rate. These should include (1) quartiles, (2) mean, (3) median, (4) minimum and maximum, and (5) variance. Choose two user segments to compare these statistics across (for example, compare the mean, median, and quartiles for users 25-34 to those for users 65+).
+
+```{r}
+# Since the <18 age group likely contains incomplete data, I will compare the over 65 age group adn the 18-24 age group, which are the youngest and oldest age groups with valid data.
+
+ctr_data %>%
+  filter(age_group %in% c("18-24", "65+")) %>%
+  group_by(age_group) %>%
+  summarize(
+    mean_ctr = mean(click_through_rate),
+    median_ctr = median(click_through_rate),
+    q1_ctr = quantile(click_through_rate, 0.25),
+    q3_ctr = quantile(click_through_rate, 0.75),
+    min_ctr = min(click_through_rate),
+    max_ctr = max(click_through_rate),
+    var_ctr = var(click_through_rate)
+  )
+
+```
+
 6.  Summarize your findings in a brief (1-2 paragraph) report intended for a New York Times (NYT) advertising team.
+
+Engagement on the NYT homepage is skewed: the vast majority of users across all age groups do not click on ads, as by median and quartile click-through rates are zero. However, when looking at the overall averages, older demographics demonstrate significantly higher responsiveness. The 65+ age group yields an average CTR of roughly 2.98%, which is nearly three times higher than the 18-24 demographic (1.07%). Regardless, there is a critical data tracking issue where all unregistered (not signed-in) users are recorded by default as 0 years old. This artificially inflates the "<18" demographic with incomplete data, meaning the advertising team should entirely exclude "Age 0" users when analyzing engagement for individulas under 18 years old until sign-in data collection is improved.
 
 ### Case Study: Social Media Engagement (Simulated)
 
@@ -56,5 +195,50 @@ The data file `Time-Wasters on Social Media.csv` contains a considerable amount 
 Read through and familiarize yourself with the variables in the dataset. Then answer the following.
 
 7.  Produce a summary of the user data (the information about users: age, gender, location, debt, whether they own property, their profession). If you were asked to describe the "average user," what would you say?
+
+```{r}
+engagement_data <- read.csv("data/Time-Wasters on Social Media.csv")
+demographic_cols <- c("Age", "Gender", "Location", "Debt", "Owns.Property", "Profession")
+user_data <- engagement_data %>% select(all_of(demographic_cols))
+user_data$Profession <- as.factor(user_data$Profession)
+user_data$Owns.Property <- as.factor(user_data$Owns.Property)
+user_data$Gender <- as.factor(user_data$Gender)
+user_data$Location <- as.factor(user_data$Location)
+# I used AI to find a way to select only the demographic columns from the larger dataset, and it suggested using the select function in combination with all_of
+
+print(summary(user_data))
+```
+The average user is an adult male that is 41 years old. It's likely that he lives in Asia, as around half of the users in the dataset are from Asia. He may own some propery and have some debt, and he is likely to be some type of laborer or worker, as a 41 year old is unlikely to be a student and waiting staff and laborers are the most common professions in the dataset.
+
 8.  What video categories are more popular with younger users (up to or below age 20)? What categories are more popular with older users (age 50 or above)? Create a plot or table of the distribution of video categories preferred by younger vs. older users.
+```{r}
+younger <- engagement_data %>% filter(Age <= 20)
+older <- engagement_data %>% filter(Age >= 50)
+
+young_vid <- younger %>%
+  count(Video.Category) %>%
+  mutate(Younger_Pct = (n / sum(n)) * 100) %>%
+  select(-n)
+
+old_vid <- older %>%
+  count(Video.Category) %>%
+  mutate(Older_Pct = (n / sum(n)) * 100) %>%
+  select(-n)
+
+full_join(young_vid, old_vid, by = "Video.Category")
+```
+
 9.  What platforms are more popular with younger users (up to or below age 20)? What platforms are more popular with older users (age 50 or above)? Create a plot or table of the distribution of platforms preferred by younger vs. older users.
+```{r}
+young_plat <- younger %>%
+  count(Platform) %>%
+  mutate(Younger_Pct = (n / sum(n)) * 100) %>%
+  select(-n)
+
+old_plat <- older %>%
+  count(Platform) %>%
+  mutate(Older_Pct = (n / sum(n)) * 100) %>%
+  select(-n)
+
+full_join(young_plat, old_plat, by = "Platform")
+```
