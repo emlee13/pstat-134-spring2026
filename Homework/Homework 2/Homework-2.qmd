@@ -15,6 +15,8 @@ execute:
   message: false
 ---
 
+# I am using my first late submission for this assignment.
+
 ## Homework 2
 
 ### Part One: Analyzing the Weather
@@ -24,8 +26,43 @@ In this section, you will gain more practice working with public APIs, this time
 #### Exercise 1
 
 Use the <http://api.weatherapi.com/v1/current.json> URL to access the API and obtain real-time weather data. Note that you will want to specify three query parameters, at least – `key`, which should be set to your individual API key, `q`, which should equal the city name of a specified location – for example `q = "Isla Vista"` – and `aqi`, which indicates whether you want to obtain air quality data (`"yes"` or `"no"`).
+```{r}
+library(httr)
+key <- "b885a623f2b949429b9223628262804"
+q <- "Isla Vista"
+aqi <- "yes"
+
+base_url <- "http://api.weatherapi.com/v1/current.json"
+full_url <- paste0(base_url, "?key=", key, "&q=", URLencode(q), "&aqi=", aqi)
+
+response <- GET(full_url)
+data <- content(response, "parsed")
+```
 
 Obtain current real-time weather data for **fifty cities**. I have saved a data file containing the names of fifty cities to `/data/cities.csv`. This ensures that you are all working with the same locations (although your results will still differ, depending on when you obtain the data).
+```{r}
+library(tidyverse)
+
+cities_df <- read_csv("data/cities.csv")
+city_names <- cities_df$names
+
+raw_weather_data <- list()
+
+for (city in city_names) {
+  
+  url <- paste0("http://api.weatherapi.com/v1/current.json?key=", key, 
+                "&q=", URLencode(city), "&aqi=", aqi)
+  response <- GET(url)
+  
+  if (status_code(response) == 200) {
+    raw_weather_data[[city]] <- content(response, "parsed")
+    } 
+  else {
+    print(concat("Failed to retrieve data for: ", city))
+    }
+  }
+
+```
 
 #### Exercise 2
 
@@ -48,18 +85,93 @@ Write code in R or Python (your choice) to extract and store the following data 
 -   Precipitation (in millimeters)
 
 -   US EPA air quality index (ranges from $1$ to $6$, representing the 6 categories of air quality: <https://www.airnow.gov/aqi/aqi-basics/>)
+```{r}
+organized_data <- list()
+
+for (city in names(raw_weather_data)) {
+  data <- raw_weather_data[[city]]
+  city_data <- tibble(
+    City = data$location$name,
+    Country = data$location$country,
+    Daytime = as.logical(data$current$is_day), 
+    Temp_F = data$current$temp_f,
+    Humidity = data$current$humidity,
+    Condition = data$current$condition$text,
+    Wind_mph = data$current$wind_mph,
+    Precip_mm = data$current$precip_mm,
+    # I used AI here because I didn't realize that the us-epa-index needed additional formatting
+    EPA_AQI = data$current$air_quality$`us-epa-index`
+  )
+  
+  organized_data[[city]] <- city_data
+}
+
+# AI helped me with this part too, I was using rbind but it was not combining the data frames correctly
+final_weather_df <- bind_rows(organized_data)
+```
 
 #### Exercise 3
 
 Create a scatterplot of temperature vs. humidity. Add a linear regression line to the plot. What are the estimated intercept and slope values for this linear regression? Does there appear to be a significant relationship between temperature and humidity?
+```{r}
+# Create the scatterplot with a linear regression line
+ggplot(final_weather_df, aes(x = Temp_F, y = Humidity)) +
+  geom_point(color = "blue", size = 2) +
+  geom_smooth(method = "lm", color = "red", se = FALSE) +
+  theme_minimal() +
+  labs(title = "Temperature vs. Humidity",
+       x = "Temperature (F)",
+       y = "Humidity (%)")
+
+temp_humid_model <- lm(Humidity ~ Temp_F, data = final_weather_df)
+summary(temp_humid_model)
+```
+
+The estimated intercept is 75.3791, and the slope is -0.1038. For every 1 degree increase in temperature, humidity decreases by approximately 0.1038 percentage points. The regression line is almost flat and the p-value for the slope is very high, which indicates that the relationship is not significant.
 
 #### Exercise 4
 
 Create a bar chart of the EPA air quality index values. What does the distribution of air quality look like? Identify the location(s) with the best air quality and the worst air quality.
+```{r}
+ggplot(final_weather_df, aes(x = factor(EPA_AQI))) +
+  geom_bar(fill = "forestgreen", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribution of EPA Air Quality Index",
+       x = "EPA AQI (1 = Good, 6 = Hazardous)",
+       y = "Number of Cities")
+
+best_aqi_value <- min(final_weather_df$EPA_AQI, na.rm = TRUE)
+worst_aqi_value <- max(final_weather_df$EPA_AQI, na.rm = TRUE)
+
+cities_best_aqi <- final_weather_df %>% 
+  filter(EPA_AQI == best_aqi_value) %>% 
+  select(City, EPA_AQI)
+
+cities_worst_aqi <- final_weather_df %>% 
+  filter(EPA_AQI == worst_aqi_value) %>% 
+  select(City, EPA_AQI)
+
+cities_best_aqi
+cities_worst_aqi
+```
+
+The distribution is right skewed, with most cities having good air quality and fewer cities having worse air quality. The location with the best air quality are Berlin, Zunyi, Rome, Guayaquil, Daegu, Munich, Casablanca, Luanda, Budapest, and Sydnet. The location with the worst air quality is Riyadh.
 
 #### Exercise 5
 
 Create a bar chart of the current weather description. Which conditions are the most common? Which are the least?
+```{r}
+ggplot(final_weather_df, aes(y = forcats::fct_infreq(Condition))) +
+  geom_bar(fill = "yellow", color = "black") +
+  theme_minimal() +
+  labs(title = "Current Weather Conditions",
+       x = "Number of Cities",
+       y = "Condition")
+
+condition_counts <- final_weather_df %>%
+  count(Condition, sort = TRUE)
+```
+The most common conditions are Clear and Partly cloudy. The least common conditions are Patchy light rain, Overcast, Light rain shower, and Light rain.
 
 ### Part Two: Scraping Books
 
@@ -76,11 +188,87 @@ Scrape the first 20 results from this site. Create a data frame (or tibble) that
 -   Star rating
 
 -   Whether the book is in stock
+```{r}
+library(rvest)
+
+url <- "https://books.toscrape.com/"
+page <- read_html(url)
+
+# The site stores each book inside an <article> tag with the class "product_pod"
+articles <- page %>% html_elements("article.product_pod")
+
+# Extract Titles 
+titles <- articles %>% 
+  html_element("h3 a") %>% 
+  html_attr("title")
+
+# Extract Prices
+prices_raw <- articles %>% 
+  html_element("p.price_color") %>% 
+  html_text()
+prices <- as.numeric(str_extract(prices_raw, "[0-9.]+"))
+
+# Extract Star Ratings
+stars_raw <- articles %>% 
+  html_element("p.star-rating") %>% 
+  html_attr("class") %>% 
+  str_remove("star-rating ")
+
+# convert text numbers to actual numbers
+star_mapping <- c("One" = 1, "Two" = 2, "Three" = 3, "Four" = 4, "Five" = 5)
+stars <- star_mapping[stars_raw]
+
+# In Stock
+stock_raw <- articles %>% 
+  html_element("p.instock.availability") %>% 
+  html_text()
+in_stock <- str_detect(stock_raw, "In stock")
+
+books_df <- tibble(
+  Title = titles,
+  Price = prices,
+  Stars = stars,
+  In_Stock = in_stock
+)
+```
+
 
 #### Exercise 7
 
 Create a histogram of prices for these 20 books. What is the average price?
+```{r}
+ggplot(books_df, aes(x = Price)) +
+  geom_histogram(binwidth = 5, fill = "blue", color = "white") +
+  theme_minimal() +
+  labs(title = "Distribution of Book Prices",
+       x = "Price",
+       y = "Frequency")
+
+average_price <- mean(books_df$Price)
+average_price
+```
+The average price is 38.0485 Euros.
 
 #### Exercise 8
 
 Create a bar chart of star rating for these 20 books. Find the book(s) with the highest and lowest star ratings.
+```{r}
+ggplot(books_df, aes(x = factor(Stars, levels = 1:5))) +
+  geom_bar(fill = "gold", color = "black") +
+  theme_minimal() +
+  labs(title = "Distribution of Star Ratings",
+       x = "Star Rating (1 to 5)",
+       y = "Count of Books")
+
+highest_rating_value <- max(books_df$Stars)
+lowest_rating_value <- min(books_df$Stars)
+
+best_books <- books_df %>% 
+  filter(Stars == highest_rating_value)
+
+worst_books <- books_df %>% 
+  filter(Stars == lowest_rating_value)
+
+best_books
+worst_books
+```
