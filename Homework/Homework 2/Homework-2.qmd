@@ -1,6 +1,6 @@
 ---
 title: "Homework 2"
-author: "PSTAT 134"
+author: "Ethan Lee"
 format:
   html:
     toc: true
@@ -26,6 +26,7 @@ In this section, you will gain more practice working with public APIs, this time
 #### Exercise 1
 
 Use the <http://api.weatherapi.com/v1/current.json> URL to access the API and obtain real-time weather data. Note that you will want to specify three query parameters, at least – `key`, which should be set to your individual API key, `q`, which should equal the city name of a specified location – for example `q = "Isla Vista"` – and `aqi`, which indicates whether you want to obtain air quality data (`"yes"` or `"no"`).
+
 ```{r}
 library(httr)
 key <- "b885a623f2b949429b9223628262804"
@@ -40,6 +41,7 @@ data <- content(response, "parsed")
 ```
 
 Obtain current real-time weather data for **fifty cities**. I have saved a data file containing the names of fifty cities to `/data/cities.csv`. This ensures that you are all working with the same locations (although your results will still differ, depending on when you obtain the data).
+
 ```{r}
 library(tidyverse)
 
@@ -85,6 +87,7 @@ Write code in R or Python (your choice) to extract and store the following data 
 -   Precipitation (in millimeters)
 
 -   US EPA air quality index (ranges from $1$ to $6$, representing the 6 categories of air quality: <https://www.airnow.gov/aqi/aqi-basics/>)
+
 ```{r}
 organized_data <- list()
 
@@ -113,6 +116,7 @@ final_weather_df <- bind_rows(organized_data)
 #### Exercise 3
 
 Create a scatterplot of temperature vs. humidity. Add a linear regression line to the plot. What are the estimated intercept and slope values for this linear regression? Does there appear to be a significant relationship between temperature and humidity?
+
 ```{r}
 # Create the scatterplot with a linear regression line
 ggplot(final_weather_df, aes(x = Temp_F, y = Humidity)) +
@@ -132,6 +136,7 @@ The estimated intercept is 75.3791, and the slope is -0.1038. For every 1 degree
 #### Exercise 4
 
 Create a bar chart of the EPA air quality index values. What does the distribution of air quality look like? Identify the location(s) with the best air quality and the worst air quality.
+
 ```{r}
 ggplot(final_weather_df, aes(x = factor(EPA_AQI))) +
   geom_bar(fill = "forestgreen", color = "black") +
@@ -160,6 +165,7 @@ The distribution is right skewed, with most cities having good air quality and f
 #### Exercise 5
 
 Create a bar chart of the current weather description. Which conditions are the most common? Which are the least?
+
 ```{r}
 ggplot(final_weather_df, aes(y = forcats::fct_infreq(Condition))) +
   geom_bar(fill = "yellow", color = "black") +
@@ -171,6 +177,7 @@ ggplot(final_weather_df, aes(y = forcats::fct_infreq(Condition))) +
 condition_counts <- final_weather_df %>%
   count(Condition, sort = TRUE)
 ```
+
 The most common conditions are Clear and Partly cloudy. The least common conditions are Patchy light rain, Overcast, Light rain shower, and Light rain.
 
 ### Part Two: Scraping Books
@@ -188,6 +195,7 @@ Scrape the first 20 results from this site. Create a data frame (or tibble) that
 -   Star rating
 
 -   Whether the book is in stock
+
 ```{r}
 library(rvest)
 
@@ -232,10 +240,10 @@ books_df <- tibble(
 )
 ```
 
-
 #### Exercise 7
 
 Create a histogram of prices for these 20 books. What is the average price?
+
 ```{r}
 ggplot(books_df, aes(x = Price)) +
   geom_histogram(binwidth = 5, fill = "blue", color = "white") +
@@ -247,11 +255,13 @@ ggplot(books_df, aes(x = Price)) +
 average_price <- mean(books_df$Price)
 average_price
 ```
+
 The average price is 38.0485 Euros.
 
 #### Exercise 8
 
 Create a bar chart of star rating for these 20 books. Find the book(s) with the highest and lowest star ratings.
+
 ```{r}
 ggplot(books_df, aes(x = factor(Stars, levels = 1:5))) +
   geom_bar(fill = "gold", color = "black") +
