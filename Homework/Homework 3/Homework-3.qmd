@@ -31,21 +31,83 @@ We will use this dataset for the purposes of practicing our data visualization a
 
 Which variables have missing values? What percentage of these variables is missing? What percentage of the overall dataset is missing?
 
+```{r}
+data <- read.csv("data/spaceship_titanic.csv")
+colSums(is.na(data))
+colMeans(is.na(data)) * 100
+mean(is.na(data)) * 100
+```
+Age, RoomService, FoodCourt, ShoppingMall, Spa, and VRDeck have missing values. Respectively, the percentages of missing values is 2.06%, 2.03%, 2.11%, 2.39%, 2.11%, and 2.16%. 0.922% of the entire dataset is missing.
+
+
 ### Exercise 2
 
 Use mode imputation to fill in any missing values of `home_planet`, `cryo_sleep`, `destination`, and `vip`. Drop any observations with a missing value of `cabin` (there are too many possible values).
 
+```{r}
+# matching the variable capitalization in the question
+library(janitor)
+library(tidyverse)
+data <- data %>% 
+  clean_names()
+
+# i used ai for this mode function since I coulnd't find any code on mode imputation in the labs
+get_mode <- function(x) {
+  ux <- unique(na.omit(x))
+  ux[which.max(tabulate(match(x, ux)))]
+}
+
+# Mode imputation
+data <- data %>% 
+  mutate(home_planet = replace_na(home_planet, get_mode(home_planet)),
+                         cryo_sleep = replace_na(cryo_sleep, get_mode(cryo_sleep)),
+                         destination = replace_na(destination, get_mode(destination)),
+                         vip = replace_na(vip, get_mode(vip))
+                         )
+
+# Drop obseravations with missing "cabin" values
+data <- data %>% drop_na(cabin)
+```
+
 Use median imputation to fill in any missing values of `age`. Rather than imputing with the overall mean of `age`, impute with the median age of the corresponding `vip` group. (For example, if someone who is a VIP is missing their age, replace their missing age value with the median age of all passengers who are **also** VIPs).
+
+```{r}
+data <- data %>% 
+  group_by(vip) %>% 
+  mutate(age = replace_na(age, median(age, na.rm = TRUE))) %>% 
+  ungroup()
+```
 
 For passengers missing any of the expenditure variables (`room_service`, `food_court`, `shopping_mall`, `spa`, or `vr_deck`), handle them in this way:
 
--   If all their observed expenditure values are $0$, **or** if they are in cryo-sleep, replace their missing value(s) with $0$.
+- If all their observed expenditure values are $0$, **or** if they are in cryo-sleep, replace their missing value(s) with $0$.
 
--   For the remaining missing expenditure values, use mean imputation.
+- For the remaining missing expenditure values, use mean imputation.
+
+```{r}
+exp_vars <- c("room_service", "food_court", "shopping_mall", "spa", "vr_deck")
+
+data <- data %>%
+  rowwise() %>%
+  mutate(
+    obs_exp = list(na.omit(c_across(all_of(exp_vars)))),
+    all_zero_exp = length(obs_exp) > 0 && all(obs_exp == 0)
+  ) %>%
+  ungroup() %>%
+  mutate(across(all_of(exp_vars), ~ ifelse(is.na(.) & (all_zero_exp | cryo_sleep == TRUE), 0, .))) %>%
+  mutate(across(all_of(exp_vars), ~ replace_na(., mean(., na.rm = TRUE)))) %>%
+  select(-obs_exp, -all_zero_exp)
+```
+
 
 ### Exercise 3
 
 What are the proportions of both levels of the outcome variable, `transported`, in the dataset?
+
+```{r}
+prop.table(table(data$transported))
+```
+
 
 ### Exercise 4
 
@@ -59,6 +121,24 @@ Make proportion stacked bar charts of each of the following. Describe what patte
 
 4.  `vip` and `transported`
 
+```{r}
+ggplot(data, aes(x = home_planet, fill = factor(transported))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion Stacked Bar Chart of Home Planet", x = "Home Planet", y = "Proportion", fill = "Transported")
+
+ggplot(data, aes(x = cryo_sleep, fill = factor(transported))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion Stacked Bar Chart of Cryo Sleep", x = "Cryo Sleep", y = "Proportion", fill = "Transported")
+
+ggplot(data, aes(x = destination, fill = factor(transported))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion Stacked Bar Chart of Destination", x = "Destination", y = "Proportion", fill = "Transported")
+
+ggplot(data, aes(x = vip, fill = factor(transported))) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion Stacked Bar Chart of VIP", x = "VIP", y = "Proportion", fill = "Transported")
+```
+
 ### Exercise 5
 
 Using box plots, density curves, histograms, dot plots, or violin plots, compare the distributions of the following and describe what patterns you observe, if any.
@@ -71,27 +151,89 @@ Using box plots, density curves, histograms, dot plots, or violin plots, compare
 
 4.  `vr_deck` across levels of `transported`
 
+```{r}
+ggplot(data, aes(x = factor(transported), y = age)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Age by Transported Status", x = "Transported", y = "Age")
+
+ggplot(data, aes(x = factor(transported), y = room_service)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Room Service Expenditure by Transported Status", x = "Transported", y = "Room Service Expenditure")
+
+ggplot(data, aes(x = factor(transported), y = spa)) +
+  geom_boxplot() +
+  labs(title = "Distribution of Spa Expenditure by Transported Status", x = "Transported", y = "Spa Expenditure")
+
+ggplot(data, aes(x = factor(transported), y = vr_deck)) +
+  geom_boxplot() +
+  labs(title = "Distribution of VR Deck Expenditure by Transported Status", x = "Transported", y = "VR Deck Expenditure")
+```
+Age is similarly distributed between both groups. The expenditure variables are right skewed, and many of the passnegers who were transported spent exactly $0 on these different expenditures.
+
 ### Exercise 6
 
 Make a correlogram of the continuous variables in the dataset. What do you observe?
+
+```{r}
+library(ggcorrplot)
+
+cont_vars <- data %>% 
+  select(age, room_service, food_court, shopping_mall, spa, vr_deck)
+
+corr_matrix <- cor(cont_vars)
+
+ggcorrplot(corr_matrix, type = "lower", lab = TRUE, lab_size = 3, title = "Correlogram of Continuous Variables")
+```
+Most of the variables are not strongly correlated, with the strongest correlations being spa and food_court as well as vr_deck and food_court
 
 ### Exercise 7
 
 Use binning to divide the feature `age` into six groups: ages 0-12, 13-17, 18-25, 26-30, 31-50, and 51+.
 
+```{r}
+data <- data %>%
+  mutate(age = cut(age, breaks = c(-Inf, 12, 17, 25, 30, 50, Inf), 
+                   labels = c("0-12", "13-17", "18-25", "26-30", "31-50", "51+")))
+```
+
 ### Exercise 8
 
 For the expenditure variables, do the following:
 
--   Create a new feature that consists of the total expenditure across all five amenities;
+- Create a new feature that consists of the total expenditure across all five amenities;
 
--   Create a binary feature to flag passengers who did not spend anything (a total expenditure of 0);
+- Create a binary feature to flag passengers who did not spend anything (a total expenditure of 0);
 
--   Log-transform the total expenditure to reduce skew.
+- Log-transform the total expenditure to reduce skew.
+
+```{r}
+data <- data %>%
+  mutate(
+    total_expenditure = room_service + food_court + shopping_mall + spa + vr_deck,
+    zero_expenditure_flag = ifelse(total_expenditure == 0, 1, 0),
+    log_total_expenditure = log(total_expenditure + 1)
+  )
+```
+
 
 ### Exercise 9
 
 Using the `passenger_id` column, create a new binary-coded feature that represents whether a passenger was traveling alone or not. Make a proportion stacked bar chart of this feature and `transported`. What do you observe?
+
+```{r}
+# I used ai to help me separate the passnger id into the group and the number
+data <- data %>%
+  separate(passenger_id, into = c("group", "num_in_group"), sep = "_", remove = FALSE) %>%
+  group_by(group) %>%
+  mutate(solo = ifelse(n() == 1, 1, 0)) %>%
+  ungroup()
+
+ggplot(data, aes(x = factor(solo), fill = factor(transported))) +
+  geom_bar(position = "fill") +
+  labs(title = "Transported Proportion by Solo Status",
+       x = "Traveling Alone (1 = Yes, 0 = No)", y = "Proportion", fill = "Transported")
+```
+Passengers traveling with others had a higher likelihood of being transported than those traveling solo.
 
 ### Exercise 10
 
@@ -103,9 +245,24 @@ Using the `cabin` variable, extract:
 
 Then do the following:
 
--   Drop any observations with a cabin deck of T;
+- Drop any observations with a cabin deck of T;
 
--   Bin cabin number into groups of 300 (for example, 0 - 300, 301 - 600, 601- 900, etc.).
+- Bin cabin number into groups of 300 (for example, 0 - 300, 301 - 600, 601- 900, etc.).
+
+```{r}
+data <- data %>%
+  separate(cabin, into = c("cabin_deck", "cabin_num", "cabin_side"), sep = "/") %>%
+  filter(cabin_deck != "T") %>%
+  mutate(
+    cabin_num = as.numeric(cabin_num),
+    cabin_num_binned = cut(cabin_num, 
+                           breaks = seq(0, 2100, by = 300), 
+                           include.lowest = TRUE,
+                           labels = c("0-300", "301-600", "601-900", "901-1200", 
+                                      "1201-1500", "1501-1800", "1801-2100"))
+  )
+```
+
 
 ### Exercise 11
 
@@ -123,10 +280,32 @@ Create a new data frame (or tibble) that retains the following features:
 
 To those features, do the following:
 
--   One-hot encode all categorical features
+- One-hot encode all categorical features
 
--   Center and scale all continuous features
+- Center and scale all continuous features
+
+```{r}
+# ai helped suggest this library to me to simplify the one-hot encoding.
+library(fastDummies)
+
+final_df <- data %>%
+  select(home_planet, cabin_deck, cabin_num_binned, cabin_side, age, 
+         log_total_expenditure, cryo_sleep, destination, solo)
+
+final_df_scaled <- final_df %>%
+  mutate(log_total_expenditure = as.vector(scale(log_total_expenditure)))
+
+final_df_processed <- dummy_cols(final_df_scaled, 
+                                 remove_first_dummy = FALSE, 
+                                 remove_selected_columns = TRUE)
+```
+
 
 ### Exercise 12
 
 Write up your analyses thus far in one or two paragraphs. Describe what you have learned about the passengers on the Spaceship Titanic. Describe the relationships you observed between variables. Which features do you think may be the best predictors of transported status? Why or why not?
+
+The passengers were highly diverse in terms of origin as well as destination. Cryo_sleep and expenditures have a strong relationship in that those who were sleeping were guaranteed to have 0 expenditures. Solo travel increased the likelihood that an individual was transported. Aside from those variables, I didn't notice any other significantl relationships. The correlogram showed some correlation between various expenditure variables (food_court was correlated with vr_deck and spa) but the values were relatively low.
+
+Cryo sleep is likely the strongest predictor. The bar charts in exercise 4 show a significant difference in transport rates between awake and sleeping passengers. Perhaps the anomaly specifically affected the areas where cryo-sleep pods were located. Anothe explanation could be that awake passengers were in public areas that were affected differently. Expenditures can be used as a proxy for whether somebody was in cryo sleep (because all sleeping passengers spend 0), so this makes it a good candidate for prediction transported status as well.
+
