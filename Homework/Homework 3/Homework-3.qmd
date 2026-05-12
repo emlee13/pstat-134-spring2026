@@ -1,18 +1,7 @@
 ---
 title: "Homework 3"
 author: "PSTAT 134/234"
-format:
-  html:
-    toc: true
-    toc-location: left
-    toc-depth: 4
-    embed-resources: true
-    theme: simplex
-    code-fold: show
-editor: visual
-execute:
-  warning: false
-  message: false
+format: pdf
 ---
 
 ## Homework 3
