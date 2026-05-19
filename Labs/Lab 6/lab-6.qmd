@@ -55,29 +55,29 @@ titanic = r.titanic
 
 There are $891$ rows and $12$ columns in the dataset. The columns are:
 
--   `passenger_id`: Unique identifier of rows/passengers. Not likely to have any effect on the outcome;
+- `passenger_id`: Unique identifier of rows/passengers. Not likely to have any effect on the outcome;
 
--   `survived`: The target variable, a binary variable with values `"Yes"` (passenger survived) or `"No"` (passenger did not survive);
+- `survived`: The target variable, a binary variable with values `"Yes"` (passenger survived) or `"No"` (passenger did not survive);
 
--   `pclass`: Socioeconomic status of the passenger, an ordinal feature with three values, `1` = upper class, `2` = middle class, `3` = lower class;
+- `pclass`: Socioeconomic status of the passenger, an ordinal feature with three values, `1` = upper class, `2` = middle class, `3` = lower class;
 
--   `name`: Passenger's full name, last name first;
+- `name`: Passenger's full name, last name first;
 
--   `sex`: Passenger sex, a binary variable with values `"male"` and `"female"`;
+- `sex`: Passenger sex, a binary variable with values `"male"` and `"female"`;
 
--   `age`: Passenger age in years;
+- `age`: Passenger age in years;
 
--   `sib_sp`: Total number of passengers' siblings and/or spouses on board;
+- `sib_sp`: Total number of passengers' siblings and/or spouses on board;
 
--   `parch`: Total number of passengers' parents and/or children on board;
+- `parch`: Total number of passengers' parents and/or children on board;
 
--   `ticket`: Passengers' ticket number;
+- `ticket`: Passengers' ticket number;
 
--   `fare`: Passengers' fare;
+- `fare`: Passengers' fare;
 
--   `cabin`: Passengers' cabin number;
+- `cabin`: Passengers' cabin number;
 
--   `embarked`: Point of embarkation, a categorical feature with three values, `"C"` = Cherbourg, `"Q"` = Queenstown, `"S"` = Southampton.
+- `embarked`: Point of embarkation, a categorical feature with three values, `"C"` = Cherbourg, `"Q"` = Queenstown, `"S"` = Southampton.
 
 ### Missing Data
 
@@ -228,17 +228,17 @@ plt.show()
 
 We can see the following:
 
--   $100\%$ of A, B, C, and T decks are first-class passengers;
+- $100\%$ of A, B, C, and T decks are first-class passengers;
 
--   Deck D is about $87\%$ first-class and $13\%$ second-class passengers;
+- Deck D is about $87\%$ first-class and $13\%$ second-class passengers;
 
--   Deck E is about $83\%$ first-class, $10\%$ second-class, and $7\%$ third-class passengers;
+- Deck E is about $83\%$ first-class, $10\%$ second-class, and $7\%$ third-class passengers;
 
--   Deck F is about $62\%$ second-class and $38\%$ third-class passengers;
+- Deck F is about $62\%$ second-class and $38\%$ third-class passengers;
 
--   $100\%$ of Deck G is third-class passengers;
+- $100\%$ of Deck G is third-class passengers;
 
--   passengers missing cabin information are mainly second- and third-class passengers.
+- passengers missing cabin information are mainly second- and third-class passengers.
 
 We might then want to look at the count of observations in each of these categories, to make sure there are no categories with only a very few observations:
 
@@ -697,21 +697,21 @@ print(titanic_test.head())
 
 ### Exercises
 
--   Notice that we forgot to center and scale the continuous features. Try implementing those transformations on both the training and testing sets.
+- Notice that we forgot to center and scale the continuous features. Try implementing those transformations on both the training and testing sets.
 
 <!-- -->
 
--   Since `deck` is clearly related to `pclass`, it might make sense that we could impute the missing values of `deck` using information from `pclass`. Try imputing the missing values via KNN.
+- Since `deck` is clearly related to `pclass`, it might make sense that we could impute the missing values of `deck` using information from `pclass`. Try imputing the missing values via KNN.
 
 <!-- -->
 
--   After one-hot encoding, we have considerably increased the size of the dataset. One way we can approach solving this problem is to remove any variables whose variance is near zero. In Python, code to accomplish this is:
+- After one-hot encoding, we have considerably increased the size of the dataset. One way we can approach solving this problem is to remove any variables whose variance is near zero. In Python, code to accomplish this is:
 
-    ```{python}
-    # vec = DictVectorizer(sparse=True, dtype=int)
-    # vec.fit_transform(data)
-    ```
+  ```{python}
+  # vec = DictVectorizer(sparse=True, dtype=int)
+  # vec.fit_transform(data)
+  ```
 
-    Try applying it to the Titanic data.
+  Try applying it to the Titanic data.
 
--   Figure out a similar recipe step in `tidymodels` and apply it to the Titanic data using R.
+- Figure out a similar recipe step in `tidymodels` and apply it to the Titanic data using R.
