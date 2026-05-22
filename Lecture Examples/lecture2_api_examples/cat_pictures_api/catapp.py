@@ -72,10 +72,10 @@ def get_random_image(cat_name: Optional[str] = None):
     """
     
   return HTMLResponse(content=html_content)
-# Return the HTML string as an HTML response instead of JSON
+# Return the HTML string as an HTML response instead of JSON. this is so the picture is displayed in the browser
 
 app.mount("/images", StaticFiles(directory=cat_pic_dir), name="images")
-# Mounts the image directory so files can be accessed at /images/<filename>. This is what makes the <img src="..."> tag work, otherwise no pictures would actually come up
+# Mounts the image directory so files can be accessed at /images/<filename>. This is what makes the <img src="..."> tag work, otherwise no pictures would actually be displayed
 
 if __name__ == "__main__":
     import uvicorn
