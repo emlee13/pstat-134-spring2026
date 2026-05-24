@@ -2,8 +2,6 @@
 .Rhistory
 .RData
 .Ruserdata
-
-
 # OS generated files
 .DS_Store
 .DS_Store?
@@ -12,14 +10,11 @@
 .Trashes
 ehthumbs.db
 Thumbs.db
-
 # R-specific files
 .Rhistory
 .RData
 .Ruserdata
 .positai
-
-
 # other
 Labs/Lab 8/lab-8-data/*.html
 data/
