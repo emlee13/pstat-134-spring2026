@@ -21,4 +21,5 @@ Thumbs.db
 
 
 # other
-Labs/Lab 8/lab-8-data/
+Labs/Lab 8/lab-8-data/*.html
+data/

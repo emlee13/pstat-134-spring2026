@@ -31,11 +31,23 @@ You also may need to use other functions. I encourage you to make use of our tex
 
 We'll work with the data in `data/spotify-review-data.csv`. This CSV file contains a total of 51,473 rows, each representing a unique user review for the Spotify application. The dataset has two columns:
 
--   Review: This column contains the text of user reviews, reflecting their experiences, opinions, and feedback on the Spotify app.
+- Review: This column contains the text of user reviews, reflecting their experiences, opinions, and feedback on the Spotify app.
 
--   Sentiment label: This column categorizes each review as either "POSITIVE" or "NEGATIVE" based on its sentiment.
+- Sentiment label: This column categorizes each review as either "POSITIVE" or "NEGATIVE" based on its sentiment.
 
 The data comes from this source at Kaggle: <https://www.kaggle.com/datasets/alexandrakim2201/spotify-dataset>
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(reshape2)
+library(wordcloud)
+library(ggraph)
+library(tidytext)
+library(igraph)
+library(ggplot2)
+```
+
 
 #### Exercise 1
 
@@ -43,9 +55,22 @@ Read the data into R (or Python, whichever you prefer).
 
 Take a look at the distribution of `label`. Are there relatively even numbers of negative and positive reviews in the data set?
 
+```{r}
+spotify_data <- read_csv("data/spotify-review-data.csv")
+table(spotify_data$label)
+```
+The numbers of positive and negative review are about even, there are approximately 25% more positive reviews than negative reviews.
+
 #### Exercise 2
 
 Take a random sample of $10,000$ reviews, stratified by `label`. All further exercises will be working with this smaller sample of reviews.
+
+```{r}
+set.seed(1)
+spotify_split <- initial_split(spotify_data, prop = 10000 / nrow(spotify_data), strata = label)
+spotify_sample <- training(spotify_split)
+```
+
 
 #### Exercise 3
 
@@ -57,15 +82,62 @@ Remove stop words. (You can use any pre-made list of stop words of your choice.)
 
 Verify that this process worked correctly.
 
+```{r}
+# I used AI here to help me with the punctuation
+spotify_clean <- spotify_sample %>%
+  mutate(id = row_number(),
+         Review = str_replace_all(Review, '[[:punct:]]', ' '),
+         Review = tolower(Review)) %>%
+  unnest_tokens(word, Review) %>% 
+  anti_join(stop_words) 
+
+head(spotify_clean)
+```
+
+
 #### Exercise 4
 
 Create a bar chart of the most commonly-occurring words (not including stop words).
 
 Create bar charts of the most commonly-occurring words, broken down by `label`. What words are more common in positive reviews? What words are more common in negative reviews?
 
+```{r}
+# Common words
+spotify_clean %>%
+  count(word, sort = TRUE) %>%
+  slice_max(n, n = 20) %>%
+  mutate(word = reorder(word, n)) %>%
+  ggplot(aes(n, word)) +
+  geom_col() +
+  labs(title = "Most Common Words Overall", y = NULL)
+
+# Common words broken down by label
+spotify_clean %>%
+  count(label, word, sort = TRUE) %>%
+  group_by(label) %>%
+  slice_max(n, n = 15) %>%
+  ungroup() %>%
+  mutate(word = reorder_within(word, n, label)) %>%
+  ggplot(aes(n, word, fill = label)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~label, scales = "free_y") +
+  scale_y_reordered() +
+  labs(title = "Most Common Words by Sentiment Label", y = NULL)
+```
+In negative reviews, "app" is much more common than in positive reviews. Other common negative words that are less present in positive review are "play", "ads", "premium", "playing", "update", "don", "fix", and "phone". Words that occur more in positive words are "love", "oy", "listening", "easy", "amazing", and "nice".
+
 #### Exercise 5
 
 Create a word cloud of the most commonly-occurring words overall, broken down by "positive" or "negative" sentiment (using the Bing sentiment lexicon).
+
+```{r}
+spotify_clean %>%
+  inner_join(get_sentiments("bing")) %>%
+  count(word, sentiment, sort = TRUE) %>%
+  acast(word ~ sentiment, value.var = "n", fill = 0) %>%
+  comparison.cloud(colors = c("red", "blue"), max.words = 100)
+```
+
 
 #### Exercise 6
 
@@ -75,22 +147,135 @@ Find the 30 words with the largest tf-idf values.
 
 Find the 30 words with the smallest tf-idf values.
 
+
+```{r}
+spotify_tf_idf <- spotify_clean %>%
+  count(id, label, word) %>%
+  bind_tf_idf(term = word, document = id, n = n)
+
+# 30 words with largest tf-idf
+top_30_tfidf <- spotify_tf_idf %>%
+  arrange(desc(tf_idf)) %>%
+  head(30)
+print(top_30_tfidf)
+
+# 30 words with smallest tf-idf
+bottom_30_tfidf <- spotify_tf_idf %>%
+  arrange(tf_idf) %>%
+  head(30)
+print(bottom_30_tfidf)
+```
+
 #### Exercise 7
 
-Find the 30 most commonly occuring bigrams.
+Find the 30 most commonly occurring bigrams.
 
 Create graphs visualizing the networks of bigrams, broken down by `label`. That is, make one graph of the network of bigrams for the positive reviews, and one graph of the network for the negative reviews.
 
 What patterns do you notice?
 
+```{r fig.width=10, fig.height=8}
+spotify_bigrams <- spotify_sample %>%
+  unnest_tokens(bigram, Review, token = "ngrams", n = 2) %>%
+  separate(bigram, c("word1", "word2"), sep = " ") %>%
+  filter(!word1 %in% stop_words$word) %>%
+  filter(!word2 %in% stop_words$word) %>%
+  drop_na(word1, word2)
+
+# 30 most commonly occurring bigrams
+top_30_bigrams <- spotify_bigrams %>%
+  unite(bigram, word1, word2, sep = " ") %>%
+  count(bigram, sort = TRUE) %>%
+  head(30)
+print(top_30_bigrams, n=30)
+
+a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
+
+# POSITIVE Bigram Graph
+pos_graph <- spotify_bigrams %>% 
+  filter(label == "POSITIVE") %>%
+  count(word1, word2) %>% 
+  filter(n > 5) %>% 
+  graph_from_data_frame()
+
+ggraph(pos_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a, end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "purple", size = 4) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1, repel = TRUE) +
+  theme_void() +
+  labs(title = "Network of Bigrams: POSITIVE Reviews")
+
+# NEGATIVE Bigram Graph
+neg_graph <- spotify_bigrams %>% 
+  filter(label == "NEGATIVE") %>%
+  count(word1, word2) %>% 
+  filter(n > 5) %>% 
+  graph_from_data_frame()
+
+ggraph(neg_graph, layout = "fr") +
+  geom_edge_link(aes(edge_alpha = n), show.legend = FALSE, arrow = a, end_cap = circle(.07, 'inches')) +
+  geom_node_point(color = "pink", size = 4) +
+  geom_node_text(aes(label = name), vjust = 1, hjust = 1, repel = TRUE) +
+  theme_void() +
+  labs(title = "Network of Bigrams: NEGATIVE Reviews")
+```
+
+From the 30 most common bigrams, we see that a good amount are related to the features and business model of Spotify, such as "spotify premium", "free version", "sound quality", "play list", and "6 skips". There are also strong positive and negative bigrams in the top 30, with bigrams like "love spotify", "nice app", "amazing app" but also "1 star" and "stops playing".
+
+When looking at the graph of positive bigrams, lots of the patterns revolve around usability and satisfaction. We see links like "variety", "range", and "wide", indicating that people enjoy Spotify's massive music library. "User" and "friendly", "quality" and "sound", "quality" and "experience" all support this pattern.
+
+The graph of negative bigrams has lots of links about frictions while using the app. "Glitchy" and "frustrating", "phone" and "crashing", "takes" and "forever", "songs" and "disappear" are all telling of some issues within the service.
+
 #### Exercise 8
 
 Using the tokenized **words** and their corresponding tf-idf scores, fit a **linear support vector machine** to predict whether a given review is positive or negative.
 
--   Split the data using stratified sampling, with 70% training and 30% testing;
+- Split the data using stratified sampling, with 70% training and 30% testing;
 
--   Drop any columns with zero variance;
+- Drop any columns with zero variance;
 
--   Fit a linear support vector machine using default values for any hyperparameters;
+- Fit a linear support vector machine using default values for any hyperparameters;
 
--   Calculate the model **accuracy** on your testing data.
+- Calculate the model **accuracy** on your testing data.
+
+```{r}
+# Pivoting tf-idf values into features
+svm_data <- spotify_tf_idf %>%
+  group_by(word) %>%
+  filter(n() > 10) %>% # Drop heavily sparse words
+  ungroup() %>%
+  pivot_wider(id_cols = c(id, label), 
+              names_from = word, 
+              names_prefix = "word_",
+              values_from = tf_idf, 
+              values_fill = 0) %>%
+  select(-id) %>%
+  mutate(label = as.factor(label))
+
+# Split data
+set.seed(1)
+svm_split <- initial_split(svm_data, prop = 0.70, strata = label)
+svm_train <- training(svm_split)
+svm_test <- testing(svm_split)
+
+# Drop columns with zero variance
+svm_recipe <- recipe(label ~ ., data = svm_train) %>%
+  step_zv(all_predictors())
+
+# Fit a linear SVM
+svm_model <- svm_linear() %>%
+  set_engine("kernlab") %>%
+  set_mode("classification")
+
+svm_wkflow <- workflow() %>%
+  add_model(svm_model) %>%
+  add_recipe(svm_recipe)
+
+svm_fit <- svm_wkflow %>% fit(data = svm_train)
+
+# Calculate model accuracy
+svm_predictions <- predict(svm_fit, new_data = svm_test) %>%
+  bind_cols(svm_test %>% select(label))
+
+accuracy(svm_predictions, truth = label, estimate = .pred_class)
+```
