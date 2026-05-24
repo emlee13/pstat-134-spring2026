@@ -176,4 +176,3 @@ svmlin_fit <- fit_resamples(svmlin_wkflow, email_folds)
 
 show_best(svmlin_fit, metric = "roc_auc")
 ```
-

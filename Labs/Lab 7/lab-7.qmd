@@ -308,9 +308,7 @@ The statistic tf-idf is intended to measure how important a word is to a documen
 
 It is a rule-of-thumb or heuristic quantity; while it has proved useful in text mining, search engines, etc., its theoretical foundations are considered less than firm by information theory experts. The inverse document frequency for any given term is defined as
 
-$$
-idf(term)=ln(\frac{n_{documents}}{n_{documents containing term}})
-$$
+$$idf(term)=ln(\frac{n_{documents}}{n_{documents containing term}})$$
 
 We can use the `bind_tf_idf` function to generate these values for the OKCupid essay data, and then look at the data:
 
@@ -449,9 +447,9 @@ Dating site essays definitely have some quirks. There are a number of bigrams wi
 
 We may be interested in visualizing all of the relationships among words simultaneously, rather than just the top few at a time. As one common visualization, we can arrange the words into a network, or “graph.” Here we’ll be referring to a “graph” not in the sense of a visualization, but as a combination of connected nodes. A graph can be constructed from a tidy object since it has three variables:
 
--   from: the node an edge is coming from
--   to: the node an edge is going towards
--   weight: a numeric value associated with each edge
+- from: the node an edge is coming from
+- to: the node an edge is going towards
+- weight: a numeric value associated with each edge
 
 The `igraph` package has many powerful functions for manipulating and analyzing networks. One way to create an `igraph` object from tidy data is the `graph_from_data_frame()` function, which takes a data frame of edges with columns for “from”, “to”, and edge attributes (in this case `n`):
 
@@ -483,9 +481,9 @@ From this, we can visualize some details of the text structure. We can see sever
 
 Here we conclude with a few polishing operations to make a better looking graph:
 
--   We add the edge_alpha aesthetic to the link layer to make links transparent based on how common or rare the bigram is;
--   We add directionality with an arrow, constructed using `grid::arrow()`, including an `end_cap` option that tells the arrow to end before touching the node;
--   We tinker with the options to the node layer to make the nodes more attractive (larger, blue points); We add a theme that’s useful for plotting networks, `theme_void()`.
+- We add the edge_alpha aesthetic to the link layer to make links transparent based on how common or rare the bigram is;
+- We add directionality with an arrow, constructed using `grid::arrow()`, including an `end_cap` option that tells the arrow to end before touching the node;
+- We tinker with the options to the node layer to make the nodes more attractive (larger, blue points); We add a theme that’s useful for plotting networks, `theme_void()`.
 
 ```{r}
 a <- grid::arrow(type = "closed", length = unit(.15, "inches"))
@@ -538,11 +536,11 @@ Suppose that you don't want to stop at tf-idf, however. Suppose that you are int
 
 "Bag of words" (BoW) is a simple and commonly used text representation method in natural language processing (NLP) and information retrieval. In the BoW model, a text is represented as an unordered collection (or "bag") of its words, disregarding grammar, syntax, and word order. Here’s how it works:
 
--   Text tokenization: The text is split into individual words (tokens);
+- Text tokenization: The text is split into individual words (tokens);
 
--   Vocabulary creation: A vocabulary list is created, containing each unique word from the entire set of documents;
+- Vocabulary creation: A vocabulary list is created, containing each unique word from the entire set of documents;
 
--   Vector representation: Each document is represented by a vector, where each position corresponds to a word in the vocabulary. The value in each position indicates the word’s frequency in the document.
+- Vector representation: Each document is represented by a vector, where each position corresponds to a word in the vocabulary. The value in each position indicates the word’s frequency in the document.
 
 For example, consider two sentences, "The cat meowed," and "The dog barked at the cat." The representation using BoW would consist of a vocabulary list, `["the", "cat", "meowed", "dog", "barked", "at"]`, and two vectors, one per sentence. The vector for sentence one would be `[1, 1, 1, 0, 0, 0]`; it contains only the first three words. The vector for sentence two would be `[2, 1, 0, 1, 1, 1]`; it doesn't contain the word "meowed," and it contains the word "the" twice.
 
